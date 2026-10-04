@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+venv/
 .pytest_cache/
 
 # Node
@@ -15,11 +16,18 @@ out/
 !.env.example
 
 # Local application data
-data/*
-!data/.gitkeep
+data/
+handover/private/
+
+# Database
+*.db
+
+# Logs
+*.log
 
 # Local models
 *.gguf
+*.bin
 
 # Evaluation outputs
 eval/results/
