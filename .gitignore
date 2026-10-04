@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Local application data
+data/*
+!data/.gitkeep
+
+# Local models
+*.gguf
+
+# Evaluation outputs
+eval/results/
+eval/runs/
+
+# OS
+.DS_Store
+Thumbs.db
