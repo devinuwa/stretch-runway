@@ -1,0 +1,282 @@
+{
+  "synthetic": true,
+  "results": [
+    {
+      "tool": "compare_scenarios",
+      "args": {
+        "scenarios": [
+          {
+            "label": "on time",
+            "adjustments": [],
+            "extra_expenses": []
+          },
+          {
+            "label": "5 days late, half the amount",
+            "adjustments": [
+              {
+                "inflow_id": "*",
+                "delay_days": 5,
+                "new_date_expr": null,
+                "amount_factor": 0.5,
+                "new_amount": null,
+                "cancelled": false
+              }
+            ],
+            "extra_expenses": []
+          }
+        ]
+      },
+      "ok": true,
+      "error": null,
+      "result": {
+        "scenarios": [
+          {
+            "scenario": {
+              "label": "on time",
+              "adjustments": [],
+              "extra_expenses": []
+            },
+            "result": {
+              "runway_days": 22,
+              "covered_through_horizon": false,
+              "runs_out_on": "2026-10-27",
+              "shortfall_amount": 500,
+              "next_money_after_shortfall": null,
+              "gap_days": null,
+              "inflows_applied": [
+                {
+                  "id": "inflow_1",
+                  "date": "2026-10-15",
+                  "amount": 20000
+                }
+              ],
+              "horizon_days": 60,
+              "series": [
+                24500,
+                23000,
+                21500,
+                20000,
+                18500,
+                17000,
+                15500,
+                14000,
+                12500,
+                11000,
+                29500,
+                28000,
+                26500,
+                25000,
+                23500,
+                22000,
+                8500,
+                7000,
+                5500,
+                4000,
+                2500,
+                1000,
+                -500,
+                -2000,
+                -3500,
+                -5000,
+                -6500,
+                -8000,
+                -9500,
+                -11000,
+                -12500,
+                -14000,
+                -15500,
+                -17000,
+                -18500,
+                -20000,
+                -21500,
+                -23000,
+                -24500,
+                -26000,
+                -27500,
+                -29000,
+                -30500,
+                -32000,
+                -33500,
+                -35000,
+                -36500,
+                -38000,
+                -39500,
+                -41000,
+                -42500,
+                -44000,
+                -45500,
+                -47000,
+                -48500,
+                -50000,
+                -51500,
+                -53000,
+                -54500,
+                -56000
+              ]
+            }
+          },
+          {
+            "scenario": {
+              "label": "5 days late, half the amount",
+              "adjustments": [
+                {
+                  "inflow_id": "*",
+                  "delay_days": 5,
+                  "new_date_expr": null,
+                  "amount_factor": 0.5,
+                  "new_amount": null,
+                  "cancelled": false
+                }
+              ],
+              "extra_expenses": []
+            },
+            "result": {
+              "runway_days": 16,
+              "covered_through_horizon": false,
+              "runs_out_on": "2026-10-21",
+              "shortfall_amount": 1500,
+              "next_money_after_shortfall": null,
+              "gap_days": null,
+              "inflows_applied": [
+                {
+                  "id": "inflow_1",
+                  "date": "2026-10-20",
+                  "amount": 10000
+                }
+              ],
+              "horizon_days": 60,
+              "series": [
+                24500,
+                23000,
+                21500,
+                20000,
+                18500,
+                17000,
+                15500,
+                14000,
+                12500,
+                11000,
+                9500,
+                8000,
+                6500,
+                5000,
+                3500,
+                12000,
+                -1500,
+                -3000,
+                -4500,
+                -6000,
+                -7500,
+                -9000,
+                -10500,
+                -12000,
+                -13500,
+                -15000,
+                -16500,
+                -18000,
+                -19500,
+                -21000,
+                -22500,
+                -24000,
+                -25500,
+                -27000,
+                -28500,
+                -30000,
+                -31500,
+                -33000,
+                -34500,
+                -36000,
+                -37500,
+                -39000,
+                -40500,
+                -42000,
+                -43500,
+                -45000,
+                -46500,
+                -48000,
+                -49500,
+                -51000,
+                -52500,
+                -54000,
+                -55500,
+                -57000,
+                -58500,
+                -60000,
+                -61500,
+                -63000,
+                -64500,
+                -66000
+              ]
+            }
+          }
+        ],
+        "deltas": {
+          "runway_days": -6,
+          "runs_out_on_days": -6
+        }
+      },
+      "numbers": [
+        {
+          "path": "runway[0].runway_days",
+          "value": 22,
+          "type": "days"
+        },
+        {
+          "path": "runway[0].runs_out_on",
+          "value": "2026-10-27",
+          "type": "date"
+        },
+        {
+          "path": "runway[1].runway_days",
+          "value": 16,
+          "type": "days"
+        },
+        {
+          "path": "runway[1].runs_out_on",
+          "value": "2026-10-21",
+          "type": "date"
+        },
+        {
+          "path": "deltas.runway_days",
+          "value": -6,
+          "type": "days"
+        }
+      ]
+    }
+  ],
+  "trace": [
+    {
+      "step": "tool_plan",
+      "label": "tool registry",
+      "ms": 3,
+      "payload": {
+        "tool": "compare_scenarios",
+        "synthetic": true
+      }
+    },
+    {
+      "step": "validation",
+      "label": "V2 plan validation",
+      "ms": 1,
+      "payload": {
+        "ok": true,
+        "checks": [
+          "schema",
+          "tool_allowlist",
+          "bounds",
+          "inflow_ids",
+          "grounding"
+        ]
+      }
+    },
+    {
+      "step": "engine_call",
+      "label": "compare_scenarios",
+      "ms": 2,
+      "payload": {
+        "scenarios": 2,
+        "synthetic": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "as_of": "2026-10-05",
+  "balance": {
+    "value": 26000,
+    "grounded": true,
+    "source_text": "I have about 26k"
+  },
+  "essentials_per_day": {
+    "value": 1500,
+    "grounded": true,
+    "source_text": "I spend like 1500 naira every day on food",
+    "converted_from": null
+  },
+  "inflows": [
+    {
+      "id": "inflow_1",
+      "label": "Aunt",
+      "expected_amount": {
+        "value": 20000,
+        "grounded": true,
+        "source_text": "my aunt promised 20,000"
+      },
+      "expected_date": {
+        "value": "2026-10-15",
+        "date_expr": {
+          "kind": "day_of_month",
+          "day": 15,
+          "month_offset": null
+        },
+        "grounded": true,
+        "source_text": "she should send it by the 15th"
+      },
+      "uncertainty_note": "promised, not confirmed"
+    }
+  ],
+  "commitments": [
+    {
+      "id": "commit_1",
+      "label": "Outfit",
+      "amount": {
+        "value": 12000,
+        "grounded": true,
+        "source_text": "12k outfit"
+      },
+      "due_date": {
+        "value": "2026-10-21",
+        "date_expr": {
+          "kind": "iso",
+          "value": "2026-10-21"
+        },
+        "grounded": true,
+        "source_text": "before the 21st"
+      },
+      "flexible": true
+    }
+  ],
+  "missing": [],
+  "warnings": [],
+  "trace": [
+    {
+      "step": "extraction",
+      "label": "S1 extract (stub)",
+      "ms": 812,
+      "payload": {
+        "source": "fixture",
+        "synthetic": true
+      }
+    }
+  ]
+}

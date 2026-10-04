@@ -1,0 +1,91 @@
+{
+  "synthetic": true,
+  "plan": {
+    "tool_calls": [
+      {
+        "tool": "compare_scenarios",
+        "args": {
+          "scenarios": [
+            {
+              "label": "on time",
+              "adjustments": [],
+              "extra_expenses": []
+            },
+            {
+              "label": "5 days late, half the amount",
+              "adjustments": [
+                {
+                  "inflow_id": "*",
+                  "delay_days": 5,
+                  "new_date_expr": null,
+                  "amount_factor": 0.5,
+                  "new_amount": null,
+                  "cancelled": false
+                }
+              ],
+              "extra_expenses": []
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "validation": {
+    "ok": true,
+    "checks": [
+      "schema",
+      "tool_allowlist",
+      "bounds",
+      "inflow_ids",
+      "grounding"
+    ],
+    "errors": [],
+    "repaired": false
+  },
+  "model": {
+    "id": "stub:demo",
+    "prompt_tokens": 312,
+    "completion_tokens": 64,
+    "total_ms": 940
+  },
+  "trace": [
+    {
+      "step": "interpretation",
+      "label": "S2 plan (stub)",
+      "ms": 940,
+      "payload": {
+        "plan": {
+          "tool_calls": [
+            {
+              "tool": "compare_scenarios",
+              "args": {
+                "scenarios": [
+                  {
+                    "label": "on time",
+                    "adjustments": [],
+                    "extra_expenses": []
+                  },
+                  {
+                    "label": "5 days late, half the amount",
+                    "adjustments": [
+                      {
+                        "inflow_id": "*",
+                        "delay_days": 5,
+                        "new_date_expr": null,
+                        "amount_factor": 0.5,
+                        "new_amount": null,
+                        "cancelled": false
+                      }
+                    ],
+                    "extra_expenses": []
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "synthetic": true
+      }
+    }
+  ]
+}

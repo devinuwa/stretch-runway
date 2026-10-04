@@ -1,0 +1,58 @@
+{
+  "synthetic": true,
+  "mode": "template",
+  "narration": "If the money arrives 5 days late and at half the amount, your money runs out on 2026-10-21 after 16 days instead of 2026-10-27 after 22 days — a difference of 6 days.",
+  "verification": {
+    "status": "verified",
+    "checked_numbers": [
+      {
+        "path": "runway[0].runway_days",
+        "value": 22,
+        "type": "days"
+      },
+      {
+        "path": "runway[0].runs_out_on",
+        "value": "2026-10-27",
+        "type": "date"
+      },
+      {
+        "path": "runway[1].runway_days",
+        "value": 16,
+        "type": "days"
+      },
+      {
+        "path": "runway[1].runs_out_on",
+        "value": "2026-10-21",
+        "type": "date"
+      },
+      {
+        "path": "deltas.runway_days",
+        "value": -6,
+        "type": "days"
+      }
+    ],
+    "unmatched": [],
+    "badge": "numbers verified against the engine"
+  },
+  "regenerated": false,
+  "model": null,
+  "trace": [
+    {
+      "step": "verification",
+      "label": "V3 narration check",
+      "ms": 1,
+      "payload": {
+        "status": "verified",
+        "unmatched": []
+      }
+    },
+    {
+      "step": "explanation",
+      "label": "template narration",
+      "ms": 1,
+      "payload": {
+        "mode": "template"
+      }
+    }
+  ]
+}
