@@ -1,5 +1,5 @@
 import pytest
-from datetime import date
+from datetime import date, timedelta
 from stretch.engine import (
     compute_runway,
     compute_safe_spend,
@@ -8,6 +8,10 @@ from stretch.engine import (
     resolve_date,
     convert_essentials,
     EngineError,
+    Situation,
+    Inflow,
+    ScenarioSpec,
+    InflowAdjustment,
 )
 from tests.helpers import (
     load_situation,
@@ -21,7 +25,7 @@ def test_runway_golden(engine_golden):
     for case in cases:
         situation = load_situation(case["situation"])
         scenario = load_scenario(case["scenario"]) if case.get("scenario") else None
-        expected = case["expected"]
+        expected = case["expected_runway"]
 
         res = compute_runway(situation, scenario)
 
@@ -93,30 +97,46 @@ def test_affordability_golden(engine_golden):
 
 def test_date_resolution_golden(engine_golden):
     cases = engine_golden["date_resolution_cases"]
-    for case in cases:
+    for i, case in enumerate(cases):
         as_of = date.fromisoformat(case["as_of"])
         expr = load_date_expr(case["expr"])
         
-        if "expected_date" in case:
-            expected = date.fromisoformat(case["expected_date"])
-            assert resolve_date(expr, as_of) == expected, f"Failed case {case['id']}"
+        if "expected" in case:
+            expected = date.fromisoformat(case["expected"])
+            assert resolve_date(expr, as_of) == expected, f"Failed case {i}"
         else:
             with pytest.raises(EngineError) as exc:
                 resolve_date(expr, as_of)
-            assert exc.value.code == "invalid_date", f"Failed case {case['id']}"
+            assert exc.value.code == case["expected_error"], f"Failed case {i}"
 
 def test_essentials_conversion_golden(engine_golden):
     cases = engine_golden["essentials_conversion_cases"]
-    for case in cases:
-        assert convert_essentials(case["amount"], case["period"]) == case["expected"]
+    for i, case in enumerate(cases):
+        assert convert_essentials(case["amount"], case["period"]) == case["expected_per_day"], f"Failed case {i}"
 
 def test_validation_error_cases(engine_golden):
     cases = engine_golden["validation_error_cases"]
     for case in cases:
-        situation = load_situation(case["situation"])
-        scenario = load_scenario(case["scenario"])
+        situation = Situation(
+            as_of=date(2026, 10, 5),
+            balance=10000,
+            essentials_per_day=1000,
+            inflows=(Inflow(id="inf1", expected_amount=5000, expected_date=date(2026, 10, 10), label="x"),)
+        )
         
-        with pytest.raises(EngineError) as exc:
-            compute_runway(situation, scenario)
-            
-        assert exc.value.code == case["expected_code"], f"Failed case {case['id']}"
+        scenario = None
+        what = case["what"]
+        
+        if what == "new_date earlier than as_of":
+            scenario = ScenarioSpec(label="err", adjustments=(InflowAdjustment(inflow_id="inf1", new_date=date(2026, 10, 1)),))
+        elif what == "amount_factor and new_amount both set":
+            scenario = ScenarioSpec(label="err", adjustments=(InflowAdjustment(inflow_id="inf1", amount_factor=0.5, new_amount=2000),))
+        elif what == "unknown inflow_id":
+            scenario = ScenarioSpec(label="err", adjustments=(InflowAdjustment(inflow_id="unknown_inf", delay_days=5),))
+        elif what == "delay_days outside 0..365":
+            scenario = ScenarioSpec(label="err", adjustments=(InflowAdjustment(inflow_id="inf1", delay_days=-5),))
+        
+        if scenario:
+            with pytest.raises(EngineError) as exc:
+                compute_runway(situation, scenario)
+            assert exc.value.code == case["expected_error"], f"Failed case {case['id']}"

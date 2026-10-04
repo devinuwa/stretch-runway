@@ -1,0 +1,11 @@
+{
+  "narration": "If it lands 5 days late and at half the amount you run out on Oct 22, after 17 days.",
+  "verification": {
+    "status": "failed",
+    "unmatched": [
+      "22",
+      "17"
+    ],
+    "action": "regenerate once, then fall back to template narration"
+  }
+}

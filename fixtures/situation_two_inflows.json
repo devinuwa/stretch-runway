@@ -1,0 +1,34 @@
+{
+  "synthetic": true,
+  "as_of": "2026-10-05",
+  "currency": "NGN",
+  "balance": 14000,
+  "essentials_per_day": 1000,
+  "inflows": [
+    {
+      "id": "inflow_1",
+      "label": "Tutoring pay",
+      "expected_amount": 6000,
+      "expected_date": "2026-10-12",
+      "uncertainty_note": null
+    },
+    {
+      "id": "inflow_2",
+      "label": "Family support",
+      "expected_amount": 15000,
+      "expected_date": "2026-10-20",
+      "uncertainty_note": "maybe"
+    }
+  ],
+  "commitments": [
+    {
+      "id": "commit_1",
+      "label": "Transport card",
+      "amount": 2000,
+      "due_date": "2026-10-08",
+      "flexible": false
+    }
+  ],
+  "horizon_days": 60,
+  "buffer_days": 3
+}

@@ -5,7 +5,7 @@
 UTC timestamp of the first commit in this repository:
 
 ```
-(will be recorded after the scaffold commit)
+2026-10-04T18:53:19+01:00
 ```
 
 ## Challenge

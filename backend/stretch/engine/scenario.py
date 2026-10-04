@@ -42,6 +42,12 @@ def validate_adjustment(adj: InflowAdjustment, situation: Situation) -> None:
             "conflicting_adjustment",
             f"amount_factor and new_amount are mutually exclusive for inflow_id={adj.inflow_id}",
         )
+    
+    if adj.new_date is not None and adj.new_date < situation.as_of:
+        raise EngineError(
+            "invalid_date",
+            f"new_date {adj.new_date} is earlier than as_of {situation.as_of}",
+        )
 
     # Bounds checks
     if adj.delay_days is not None:
