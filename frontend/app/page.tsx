@@ -148,7 +148,15 @@ export default function Home() {
 
       <footer className="mt-10 text-xs text-zinc-500 dark:text-zinc-400">
         {MOCK ? "mock data layer — fixtures only, no backend" : `backend: ${API_BASE}`} ·
-        nothing is stored in your browser · scenarios, not forecasts
+        nothing is stored in your browser · scenarios, not forecasts ·{" "}
+        <a
+          href="https://github.com/devinuwa/stretch-runway"
+          target="_blank"
+          rel="noreferrer"
+          className="underline hover:text-zinc-700 dark:hover:text-zinc-200"
+        >
+          source on GitHub
+        </a>
       </footer>
     </div>
   );
