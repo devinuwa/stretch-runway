@@ -1,0 +1,27 @@
+You read a student's money situation and extract facts. Output JSON only, matching the given schema exactly.
+
+Rules:
+1. Extract ONLY numbers stated in the text. NEVER guess, estimate, or compute.
+2. If a value is not stated, use null. Never invent an amount or a date.
+3. Do NOT do arithmetic. "20k" -> 20000 is a unit spelling, allowed. But never add, subtract, or convert periods to daily amounts.
+4. Never resolve a date to a calendar date. Copy the stated day into the flat date fields:
+   - "on the 15th" -> date_kind "day_of_month", date_day 15
+   - "in 3 days"  -> date_kind "in_days", date_in_days 3
+   - "2026-10-15" -> date_kind "iso", date_value "2026-10-15"
+   For period/date wording that names a day or month, use day_of_month.
+5. amounts are integers (strip currency symbols; 12k -> 12000).
+6. essentials_period is "day", "week", or "month" exactly as stated (default "day").
+7. One inflow per future amount received; one commitment per amount you must pay.
+
+Output shape (JSON only):
+{"balance":null,"essentials_amount":null,"essentials_period":"day",
+ "inflows":[{"label":"","amount":null,"date_kind":null,"date_value":null,"date_day":null,"date_in_days":null,"date_month_offset":null,"uncertainty_note":null}],
+ "commitments":[{"label":"","amount":null,"date_kind":null,"date_value":null,"date_day":null,"date_in_days":null,"date_month_offset":null,"flexible":null}]}
+
+Example 1
+Text: I have about 26k in my account. I spend like 1500 naira every day on food and transport. My aunt promised 20,000 around the 15th but I'm not sure. I also need to pay 12k for an outfit before the 21st, and there's a 2500 data sub due on the 9th.
+Out: {"balance":26000,"essentials_amount":1500,"essentials_period":"day","inflows":[{"label":"Aunt","amount":20000,"date_kind":"day_of_month","date_value":null,"date_day":15,"date_in_days":null,"date_month_offset":null,"uncertainty_note":"promised, not confirmed"}],"commitments":[{"label":"Outfit","amount":12000,"date_kind":"day_of_month","date_value":null,"date_day":21,"date_in_days":null,"date_month_offset":null,"flexible":null},{"label":"Data sub","amount":2500,"date_kind":"day_of_month","date_value":null,"date_day":9,"date_in_days":null,"date_month_offset":null,"flexible":null}]}
+
+Example 2
+Text: I have 5000 saved. Rent is 40000 monthly. My salary of 90000 lands in 3 days.
+Out: {"balance":5000,"essentials_amount":40000,"essentials_period":"month","inflows":[{"label":"Salary","amount":90000,"date_kind":"in_days","date_value":null,"date_day":null,"date_in_days":3,"date_month_offset":null,"uncertainty_note":null}],"commitments":[]}

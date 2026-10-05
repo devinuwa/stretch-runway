@@ -71,8 +71,10 @@ def test_v3_rejection_logic():
     ok = verify_narration(success_expected["narration"], passing_registry, question=demo_question)
     assert ok["status"] == "verified", ok
 
-    # Without the question, the delay "5" is not grounded -> the gate fails.
-    bare = verify_narration(success_expected["narration"], passing_registry)
+    # Without the question and without the deltas entry (canonical delta -5
+    # itself yields the token "5"), the delay "5" is not grounded -> gate fails.
+    no_delta = [n for n in passing_registry if n["path"] != "deltas.runway_days"]
+    bare = verify_narration(success_expected["narration"], no_delta)
     assert bare["status"] == "failed"
     assert "5" in bare["unmatched"]
 

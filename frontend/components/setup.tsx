@@ -49,6 +49,9 @@ export function SetupScreen({
   const [showManual, setShowManual] = useState(false);
 
   const demoProfile = health?.mode.profile === "demo";
+  // Hosted preview is sample-data only: hide the LLM paste box and the manual
+  // form so the only path is "Load sample data".
+  const hosted = health?.hosted === true;
 
   async function extract() {
     if (!text.trim()) return;
@@ -77,39 +80,43 @@ export function SetupScreen({
 
   return (
     <section className="w-full max-w-2xl space-y-6">
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="text-lg font-semibold">Describe your situation</h2>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Plain words are fine — money you have, money that might come in, things you must pay.
-        </p>
-        <textarea
-          className={`${inputCls} mt-3 min-h-32`}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Paste your situation here…"
-        />
-        <div className="mt-3 flex items-center gap-3">
-          <button className={btnPrimary} onClick={extract} disabled={busy !== "" || !text.trim()}>
-            {busy === "extract" ? "Reading…" : "Read my situation"}
-          </button>
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-            A small local model turns this into fields you can check.
-          </span>
+      {!hosted && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="text-lg font-semibold">Describe your situation</h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Plain words are fine — money you have, money that might come in, things you must pay.
+          </p>
+          <textarea
+            className={`${inputCls} mt-3 min-h-32`}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Paste your situation here…"
+          />
+          <div className="mt-3 flex items-center gap-3">
+            <button className={btnPrimary} onClick={extract} disabled={busy !== "" || !text.trim()}>
+              {busy === "extract" ? "Reading…" : "Read my situation"}
+            </button>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              A small local model turns this into fields you can check.
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex items-center gap-3">
-        <button className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400" onClick={() => setShowManual((v) => !v)}>
-          {showManual ? "Hide manual entry" : "or enter manually"}
-        </button>
-        {demoProfile && (
+        {!hosted && (
+          <button className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-400" onClick={() => setShowManual((v) => !v)}>
+            {showManual ? "Hide manual entry" : "or enter manually"}
+          </button>
+        )}
+        {(demoProfile || hosted) && (
           <button className={`${btnGhost} ml-auto`} onClick={loadDemo} disabled={busy !== ""}>
             {busy === "demo" ? "Loading…" : "Load sample data"}
           </button>
         )}
       </div>
 
-      {showManual && (
+      {!hosted && showManual && (
         <ManualForm
           onDraft={(d) => {
             setShowManual(false);
@@ -175,6 +182,9 @@ function ManualForm({
       inflows: cleanInflows,
       commitments: cleanCommits,
     };
+    // Backend converts week/month to per-day with ceil; do not convert on the frontend.
+    // Backend converts week/month to per-day with ceil; do not convert on the frontend.
+    // Request body required for setup manual.
     setBusy(true);
     try {
       onDraft(await api.manual(body));

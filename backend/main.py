@@ -29,6 +29,7 @@ from stretch.engine import (
 from stretch.engine.models import ScenarioSpec, InflowAdjustment, ExtraExpense
 from stretch.store import make_store
 from stretch.tools.registry import execute_plan, TOOL_ALLOWLIST
+from stretch.verify import payload_number_values, situation_number_values, verify_narration
 
 # ---------------------------------------------------------------------------
 # Config from env
@@ -37,12 +38,28 @@ PROFILE = os.environ.get("STRETCH_PROFILE", "demo")  # demo | user
 PERSIST = os.environ.get("STRETCH_PERSIST", "0") == "1"
 HANDOVER = os.environ.get("STRETCH_HANDOVER", "0") == "1"
 LLM_STATE = "disabled" if os.environ.get("STRETCH_LLM", "on") == "off" else "down"
-MODEL_ID = os.environ.get("STRETCH_MODEL", None)
+MODEL_ID = os.environ.get("STRETCH_MODEL", "gemma3:4b")
 VERSION = "0.1.0"
 
 if HANDOVER:
     PROFILE = "user"
     PERSIST = False
+
+# Hosted preview: free public deploy. Forces the local model off, the demo
+# profile and nothing persisted. Local defaults are unchanged when unset.
+HOSTED = os.environ.get("STRETCH_HOSTED", "0") == "1"
+if HOSTED:
+    PROFILE = "demo"
+    PERSIST = False
+
+HOSTED_SAMPLE_ONLY_MSG = "Hosted preview is sample-data only"
+
+# CORS: comma-separated allow-list. Default stays localhost-only.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("STRETCH_CORS_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
 
 # ---------------------------------------------------------------------------
 # Store (singleton for this process)
@@ -56,7 +73,7 @@ app = FastAPI(title="Stretch", version=VERSION)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -186,6 +203,13 @@ class ScenarioModel(BaseModel):
     adjustments: list[InflowAdjustmentModel] = []
     extra_expenses: list[ExpenseModel] = []
 
+
+class ExtractSetupRequest(BaseModel):
+    text: str
+    as_of: Optional[str] = None
+
+class AskPlanRequest(BaseModel):
+    question: str
 
 class RunwayScenariosRequest(BaseModel):
     scenarios: Optional[list[ScenarioModel]] = None
@@ -358,14 +382,24 @@ def _default_presets(situation: Situation) -> list[dict]:
 # ---------------------------------------------------------------------------
 # GET /api/health
 # ---------------------------------------------------------------------------
+def _llm_state() -> str:
+    """LLM state for /api/health. Hosted preview always reports disabled."""
+    if HOSTED or os.environ.get("STRETCH_LLM", "on") == "off":
+        return "disabled"
+    from stretch.llm.adapters import OllamaAdapter
+    adapter = OllamaAdapter(model_id=MODEL_ID)
+    return adapter.health()
+
+
 @app.get("/api/health")
 def health():
-    llm_mode = os.environ.get("STRETCH_LLM", "on")
-    state = "disabled" if llm_mode == "off" else "down"
+    state = _llm_state()
+
     return {
         "status": "ok",
         "llm": {"state": state, "runtime": "ollama", "model": MODEL_ID, "detail": None},
         "mode": {"profile": PROFILE, "persist": PERSIST, "handover": HANDOVER},
+        "hosted": HOSTED,
         "has_situation": _store.has_situation(),
         "version": VERSION,
     }
@@ -376,6 +410,8 @@ def health():
 # ---------------------------------------------------------------------------
 @app.post("/api/setup/manual")
 def setup_manual(req: ManualSetupRequest):
+    if HOSTED:
+        _err("profile_forbidden", HOSTED_SAMPLE_ONLY_MSG, status=403)
     try:
         situation = _build_situation_from_manual(req)
     except EngineError as e:
@@ -384,8 +420,155 @@ def setup_manual(req: ManualSetupRequest):
 
 
 # ---------------------------------------------------------------------------
+# POST /api/setup/extract
+# ---------------------------------------------------------------------------
+@app.post("/api/setup/extract")
+def setup_extract(req: ExtractSetupRequest):
+    if HOSTED:
+        _err("profile_forbidden", HOSTED_SAMPLE_ONLY_MSG, status=403)
+    if health()["llm"]["state"] != "up":
+        _err("llm_unavailable", "LLM is not up", fallback="manual", status=503)
+
+    as_of = date.fromisoformat(req.as_of) if req.as_of else date.today()
+
+    from stretch.llm.adapters import OllamaAdapter
+    from stretch.trace.tracer import Tracer
+    from stretch.pipeline.extractor import run_extraction
+    
+    adapter = OllamaAdapter(model_id=MODEL_ID)
+    tracer = Tracer(demo_profile=(PROFILE == "demo"))
+    
+    try:
+        ext_out = run_extraction(req.text, adapter, tracer)
+    except Exception as e:
+        _err("internal", f"Extraction failed: {str(e)}", status=500)
+
+    # Grounding & Conversions
+    # V1: per-field grounded/source_text computed from the original text.
+    gr = getattr(ext_out, "grounding", None) or {}
+    warnings = []
+    missing = []
+    
+    # Balance
+    b_val = ext_out.balance
+    if b_val is None:
+        missing.append("balance")
+        b_val = 0
+    elif b_val < 0:
+        warnings.append("balance is negative, setting to 0")
+        b_val = 0
+
+    # Essentials
+    e_val = None
+    converted_from = None
+    if not ext_out.essentials or ext_out.essentials.amount is None:
+        missing.append("essentials")
+        e_val = 0
+    else:
+        e_val = convert_essentials(ext_out.essentials.amount, ext_out.essentials.period)
+        if ext_out.essentials.period != "day":
+            converted_from = {"amount": ext_out.essentials.amount, "period": ext_out.essentials.period}
+
+    # Inflows
+    gr_in = gr.get("inflows") or []
+    inflows = []
+    for idx, i in enumerate(ext_out.inflows):
+        gin = gr_in[idx] if idx < len(gr_in) else {}
+        gin_amt = gin.get("amount") or {}
+        gin_date = gin.get("date") or {}
+        i_amt = i.expected_amount
+        if i_amt is None:
+            missing.append(f"inflow[{idx}].amount")
+        
+        i_date_val = None
+        if i.date_expr:
+            try:
+                # Need to convert ExtractorDateExpr to DateExpr
+                expr = DateExpr(
+                    kind=DateExprKind(i.date_expr.kind),
+                    value=i.date_expr.value,
+                    n=i.date_expr.n,
+                    day=i.date_expr.day,
+                    month_offset=i.date_expr.month_offset
+                )
+                i_date_val = resolve_date(expr, as_of).isoformat()
+            except EngineError as e:
+                missing.append(f"inflow[{idx}].date")
+                warnings.append(str(e))
+        else:
+            missing.append(f"inflow[{idx}].date")
+
+        inflows.append({
+            "id": f"inflow_{idx+1}",
+            "label": i.label,
+            "expected_amount": {"value": i_amt, "grounded": gin_amt.get("grounded", True), "source_text": gin_amt.get("source_text")},
+            "expected_date": {"value": i_date_val, "date_expr": i.date_expr.model_dump() if i.date_expr else None, "grounded": gin_date.get("grounded", True), "source_text": gin_date.get("source_text")},
+            "uncertainty_note": i.uncertainty_note,
+        })
+
+    # Commitments
+    gr_com = gr.get("commitments") or []
+    commitments = []
+    for idx, c in enumerate(ext_out.commitments):
+        gcom = gr_com[idx] if idx < len(gr_com) else {}
+        gcom_amt = gcom.get("amount") or {}
+        gcom_date = gcom.get("date") or {}
+        c_amt = c.amount
+        if c_amt is None:
+            missing.append(f"commitment[{idx}].amount")
+        
+        c_date_val = None
+        if c.date_expr:
+            try:
+                expr = DateExpr(
+                    kind=DateExprKind(c.date_expr.kind),
+                    value=c.date_expr.value,
+                    n=c.date_expr.n,
+                    day=c.date_expr.day,
+                    month_offset=c.date_expr.month_offset
+                )
+                c_date_val = resolve_date(expr, as_of).isoformat()
+            except EngineError as e:
+                missing.append(f"commitment[{idx}].date")
+                warnings.append(str(e))
+        else:
+            missing.append(f"commitment[{idx}].date")
+
+        commitments.append({
+            "id": f"commit_{idx+1}",
+            "label": c.label,
+            "amount": {"value": c_amt, "grounded": gcom_amt.get("grounded", True), "source_text": gcom_amt.get("source_text")},
+            "due_date": {"value": c_date_val, "date_expr": c.date_expr.model_dump() if c.date_expr else None, "grounded": gcom_date.get("grounded", True), "source_text": gcom_date.get("source_text")},
+            "flexible": c.flexible,
+        })
+
+    gr_bal = gr.get("balance") or {}
+    gr_ess = gr.get("essentials") or {}
+    draft = {
+        "as_of": as_of.isoformat(),
+        "balance": {"value": b_val, "grounded": gr_bal.get("grounded", True), "source_text": gr_bal.get("source_text")},
+        "essentials_per_day": {"value": e_val, "grounded": gr_ess.get("grounded", True), "source_text": gr_ess.get("source_text"), "converted_from": converted_from},
+        "inflows": inflows,
+        "commitments": commitments,
+        "missing": missing,
+        "warnings": warnings,
+    }
+
+    # Contract/fixture shape: the SituationDraft fields live at the top level,
+    # with the trace alongside them (same as /api/setup/manual).
+    return {**draft, "trace": tracer.steps()}
+
+
+# ---------------------------------------------------------------------------
 # PUT /api/situation   GET /api/situation
 # ---------------------------------------------------------------------------
+def _hosted_demo_body() -> dict:
+    """The one acceptable PUT body in hosted preview (fixtures/situation_demo.json)."""
+    body = json.loads((FIXTURES_DIR / "situation_demo.json").read_text(encoding="utf-8"))
+    body.pop("synthetic", None)
+    return body
+
+
 @app.put("/api/situation")
 def put_situation(req: SituationPutRequest):
     as_of = date.fromisoformat(req.as_of)
@@ -423,6 +606,8 @@ def put_situation(req: SituationPutRequest):
         inflows=tuple(inflows),
         commitments=tuple(commitments),
     )
+    if HOSTED and _situation_to_response(situation) != _hosted_demo_body():
+        _err("profile_forbidden", HOSTED_SAMPLE_ONLY_MSG, status=403)
     _store.put(situation)
     return _situation_to_response(situation)
 
@@ -519,6 +704,36 @@ def ask_direct(req: AskDirectRequest):
 
 
 # ---------------------------------------------------------------------------
+# POST /api/ask/plan
+# ---------------------------------------------------------------------------
+@app.post("/api/ask/plan")
+def ask_plan(req: AskPlanRequest):
+    if health()["llm"]["state"] != "up":
+        _err("llm_unavailable", "LLM is not up", fallback="manual", status=503)
+
+    sit = _require_situation()
+
+    from stretch.llm.adapters import OllamaAdapter
+    from stretch.trace.tracer import Tracer
+    from stretch.pipeline.planner import run_planner
+    
+    adapter = OllamaAdapter(model_id=MODEL_ID)
+    tracer = Tracer(demo_profile=(PROFILE == "demo"))
+    
+    try:
+        plan_dict, validation, model_stats = run_planner(req.question, sit, adapter, tracer)
+    except Exception as e:
+        _err("internal", f"Planning failed: {str(e)}", status=500)
+
+    return {
+        "plan": plan_dict,
+        "validation": validation,
+        "model": model_stats,
+        "trace": tracer.steps()
+    }
+
+
+# ---------------------------------------------------------------------------
 # POST /api/ask/execute
 # ---------------------------------------------------------------------------
 @app.post("/api/ask/execute")
@@ -540,10 +755,10 @@ def ask_execute(req: AskExecuteRequest):
 # ---------------------------------------------------------------------------
 @app.post("/api/ask/narrate")
 def ask_narrate(req: AskNarrateRequest):
-    # P0: always template mode; no LLM calls.
-    # V3 gate: check that no numeric token in narration comes from outside the registry.
-    # Template narration is generated from results summary.
-    lines = [f'Here is a summary based on your question: "{req.question}"']
+    # P0: always template mode; no LLM calls. The template is built by code from
+    # engine results only, then V3 checks every number in it against the registry,
+    # the stored situation and the question (ARCHITECTURE.md §8, CONTRACT §4).
+    lines: list[str] = []
     for r in req.results:
         if not r.get("ok"):
             lines.append(f"Tool {r.get('tool')} failed: {r.get('error')}")
@@ -564,26 +779,47 @@ def ask_narrate(req: AskNarrateRequest):
         elif tool == "check_affordability":
             lines.append(f"Affordability verdict: {result.get('verdict')}. Days lost: {result.get('days_lost')}.")
 
-    narration = " ".join(lines)
+    narration = " ".join(lines) if lines else "No engine result to explain."
 
-    # V3 verification: build registry of all numbers from results
-    registry_values: set[str] = set()
-    for r in req.results:
-        for n in r.get("numbers", []):
-            registry_values.add(str(n.get("value", "")))
+    # V3 gate: every number in the narration must exist in the registry, the
+    # situation or the question. ``unmatched`` lists the violations.
+    registry = [n for r in req.results for n in r.get("numbers", [])]
+    stored = _store.get()
+    engine_values = situation_number_values(stored) + payload_number_values(
+        [r.get("result") for r in req.results]
+    )
+    check = verify_narration(
+        narration,
+        registry,
+        question=req.question,
+        situation_values=engine_values,
+    )
+    verified = check["status"] == "verified"
 
     return {
         "mode": "template",
         "narration": narration,
         "verification": {
-            "status": "verified",
-            "checked_numbers": list(registry_values),
-            "unmatched": [],
-            "badge": "numbers verified against the engine",
+            "status": check["status"],
+            "checked_numbers": list(registry),
+            "unmatched": check["unmatched"],
+            "badge": "numbers verified against the engine" if verified else None,
         },
         "regenerated": False,
         "model": None,
-        "trace": [{"step": "explanation", "label": "template narration", "ms": 0, "payload": {}}],
+        "trace": [
+            {
+                "step": "verification",
+                "label": "V3 narration check",
+                "ms": 0,
+                "payload": {
+                    "status": check["status"],
+                    "unmatched": check["unmatched"],
+                    "advice_hits": check["advice_hits"],
+                },
+            },
+            {"step": "explanation", "label": "template narration", "ms": 0, "payload": {}},
+        ],
     }
 
 

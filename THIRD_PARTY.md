@@ -1,28 +1,23 @@
-# Third-Party Credits
+# Third-Party Software Credits
 
-## Python Dependencies
+This project includes or uses the following open-source software and assets:
 
-| Package | License | URL |
-|---------|---------|-----|
-| FastAPI | MIT | https://github.com/fastapi/fastapi |
-| Uvicorn | BSD-3-Clause | https://github.com/encode/uvicorn |
-| Pydantic | MIT | https://github.com/pydantic/pydantic |
-| httpx | BSD-3-Clause | https://github.com/encode/httpx |
-| pytest | MIT | https://github.com/pytest-dev/pytest |
-| Hypothesis | MPL-2.0 | https://github.com/HypothesisWorks/hypothesis |
-| psutil | BSD-3-Clause | https://github.com/giampaolo/psutil |
-| PyYAML | MIT | https://github.com/yaml/pyyaml |
+## Backend
+- **Python**: (PSF License)
+- **FastAPI**: (MIT License) - Copyright (c) 2018 Sebastián Ramírez
+- **Uvicorn**: (BSD License)
+- **Pydantic**: (MIT License)
+- **HTTPX**: (BSD License)
+- **Pytest**: (MIT License)
 
-## Models (not bundled; user must download separately)
+## Frontend
+- **React**: (MIT License)
+- **Next.js**: (MIT License)
+- **Tailwind CSS**: (MIT License)
+- **Recharts**: (MIT License)
 
-| Model | License | Notes |
-|-------|---------|-------|
-| Gemma | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) | Custom license, not OSI-approved |
-| Llama | [Llama Community License](https://github.com/meta-llama/llama-models/blob/main/models/llama3/LICENSE) | Custom license, not OSI-approved |
-| Qwen | Apache-2.0 | https://github.com/QwenLM/Qwen |
+## Models
+- **Gemma 3**: Google LLC. (Subject to Gemma license terms)
 
-## Runtime
-
-| Tool | License | URL |
-|------|---------|-----|
-| Ollama | MIT | https://github.com/ollama/ollama |
+## Tools
+- **Ollama**: (MIT License)

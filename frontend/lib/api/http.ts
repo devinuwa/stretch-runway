@@ -1,6 +1,7 @@
 /**
- * Typed HTTP client for the real FastAPI backend (127.0.0.1:8000). Only used
- * when NEXT_PUBLIC_MOCK is not "1" (see client.ts).
+ * Typed HTTP client for the real FastAPI backend. Only used when
+ * NEXT_PUBLIC_MOCK is not "1" (see client.ts). The base URL comes from
+ * NEXT_PUBLIC_API_BASE, defaulting to the local backend at 127.0.0.1:8000.
  */
 import {
   ApiError,
@@ -18,7 +19,10 @@ import {
   type StretchApi,
 } from "./types";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://127.0.0.1:8000";
 
 const PATHS = {
   health: "/api/health",

@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { api, MOCK } from "@/lib/api/client";
+import { API_BASE } from "@/lib/api/http";
 import { SetupScreen } from "@/components/setup";
 import { ConfirmationCard } from "@/components/confirmation";
 import { Dashboard } from "@/components/dashboard";
@@ -26,13 +27,46 @@ export default function Home() {
   const [stage, setStage] = useState<Stage>("setup");
   const [draft, setDraft] = useState<ExtractResponse | null>(null);
   const [situation, setSituation] = useState<Situation | null>(null);
+  const [handoverUrl, setHandoverUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .health()
-      .then(setHealth)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    let cancelled = false;
+    const startedAt = Date.now();
+    const HEALTH_TIMEOUT_MS = 90_000;
+    const HEALTH_RETRY_MS = 3_000;
+
+    const load = () => {
+      api
+        .health()
+        .then((h) => {
+          if (cancelled) return;
+          setHealth(h);
+          // ?handover=1 toggle is wired from the server health response
+          // (STRETCH_HANDOVER=1 forces demo->user, in-memory only, metadata-only traces).
+          if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get("handover") === "1" && h.mode.handover) {
+              setHandoverUrl(window.location.pathname + "?handover=1");
+            }
+          }
+        })
+        .catch((e: unknown) => {
+          if (cancelled) return;
+          // A free hosted server may be cold-starting. Keep retrying for 90s
+          // instead of failing on the first timeout.
+          if (Date.now() - startedAt < HEALTH_TIMEOUT_MS) {
+            setTimeout(load, HEALTH_RETRY_MS);
+          } else {
+            setError(e instanceof Error ? e.message : String(e));
+          }
+        });
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const onDraft = useCallback((d: ExtractResponse) => {
@@ -50,9 +84,15 @@ export default function Home() {
     setStage("dashboard");
   }, []);
 
+  const waking = health === null && error === null;
+
   const backToSetup = useCallback(() => {
     setStage("setup");
     setDraft(null);
+    // Drop ?handover=1 from the URL so the banner is only shown while it is set.
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
   }, []);
 
   return (
@@ -69,10 +109,22 @@ export default function Home() {
         )}
       </header>
 
-      <Banners health={health} onClearSession={backToSetup} />
+      <Banners
+        health={health}
+        onClearSession={backToSetup}
+        handoverUrl={handoverUrl}
+      />
 
       <main className="flex-1">
-        {stage === "setup" && (
+        {stage === "setup" && waking && (
+          <div
+            data-testid="waking-server"
+            className="rounded-xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+          >
+            Waking the free server, this can take about a minute…
+          </div>
+        )}
+        {stage === "setup" && !waking && (
           <SetupScreen health={health} onDraft={onDraft} onSituationLoaded={onDemoLoaded} onError={setError} />
         )}
         {stage === "confirm" && draft && (
@@ -95,7 +147,7 @@ export default function Home() {
       )}
 
       <footer className="mt-10 text-xs text-zinc-500 dark:text-zinc-400">
-        {MOCK ? "mock data layer — fixtures only, no backend" : "backend: http://127.0.0.1:8000"} ·
+        {MOCK ? "mock data layer — fixtures only, no backend" : `backend: ${API_BASE}`} ·
         nothing is stored in your browser · scenarios, not forecasts
       </footer>
     </div>

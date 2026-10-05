@@ -1,0 +1,3 @@
+models:
+  - id: gemma3:4b
+    provider: ollama

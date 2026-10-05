@@ -20,6 +20,13 @@
       "amount": 12000,
       "due_date": "2026-10-21",
       "flexible": true
+    },
+    {
+      "id": "commit_2",
+      "label": "Data bundle",
+      "amount": 2500,
+      "due_date": "2026-10-09",
+      "flexible": false
     }
   ],
   "horizon_days": 60,

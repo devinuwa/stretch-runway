@@ -1,18 +1,18 @@
 {
   "synthetic": true,
   "mode": "template",
-  "narration": "If the money arrives 5 days late and at half the amount, your money runs out on 2026-10-21 after 16 days instead of 2026-10-27 after 22 days — a difference of 6 days.",
+  "narration": "If the money arrives 5 days late and at half the amount, your money runs out on 2026-10-21 after 16 days instead of 2026-10-26 after 21 days — a difference of 5 days.",
   "verification": {
     "status": "verified",
     "checked_numbers": [
       {
         "path": "runway[0].runway_days",
-        "value": 22,
+        "value": 21,
         "type": "days"
       },
       {
         "path": "runway[0].runs_out_on",
-        "value": "2026-10-27",
+        "value": "2026-10-26",
         "type": "date"
       },
       {
@@ -27,7 +27,7 @@
       },
       {
         "path": "deltas.runway_days",
-        "value": -6,
+        "value": -5,
         "type": "days"
       }
     ],

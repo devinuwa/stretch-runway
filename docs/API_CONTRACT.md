@@ -52,7 +52,11 @@ Codes: `llm_unavailable` (503, `fallback:"manual"`), `llm_timeout` (504, `fallba
 | `STRETCH_HANDOVER` | `1` | forces profile `user`, `PERSIST=0`, metadata-only traces, session banner |
 | `STRETCH_LLM` | `on` (default) / `off` | `off` forces manual fallback mode |
 | `STRETCH_MODEL` | model id from `models.yaml` | default model for all stages |
+| `STRETCH_HOSTED` | `1` / unset | free public "hosted preview": forces profile `demo`, `PERSIST=0`, LLM off; only the sample situation is allowed |
+| `STRETCH_CORS_ORIGINS` | comma-separated origins | CORS allow-list; default `http://localhost:3000` |
 | `STRETCH_ENV` | `dev` / `eval` | only `eval` + `demo` may activate the optional Sentry adapter |
+
+**Hosted preview (`STRETCH_HOSTED=1`):** `/api/health` reports `"hosted":true` and `llm.state:"disabled"`. `POST /api/setup/extract` and `POST /api/setup/manual` return 403 `profile_forbidden` (`"Hosted preview is sample-data only"`). `PUT /api/situation` accepts only a body equal (ignoring key order) to `fixtures/situation_demo.json`, else 403 `profile_forbidden`. `POST /api/situation/demo`, `POST /api/runway/scenarios`, `POST /api/ask/direct` and `DELETE /api/data` behave normally; `POST /api/ask/plan` returns 503 `llm_unavailable`. Local defaults are unchanged when `STRETCH_HOSTED` is unset.
 
 ## 3. Endpoints
 
@@ -61,6 +65,7 @@ Codes: `llm_unavailable` (503, `fallback:"manual"`), `llm_timeout` (504, `fallba
 { "status":"ok",
   "llm":{"state":"up|down|disabled","runtime":"ollama","model":"<id>|null","detail":"<short reason or null>"},
   "mode":{"profile":"demo|user","persist":true,"handover":false},
+  "hosted":false,
   "has_situation":false, "version":"0.1.0" }
 ```
 

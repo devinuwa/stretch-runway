@@ -228,6 +228,8 @@ export interface HealthResponse {
   status: string;
   llm: HealthLlm;
   mode: HealthMode;
+  /** true when the backend runs the free public "hosted preview" (STRETCH_HOSTED=1) */
+  hosted: boolean;
   has_situation: boolean;
   version: string;
 }
