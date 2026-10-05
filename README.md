@@ -45,7 +45,7 @@ See [THIRD_PARTY.md](THIRD_PARTY.md).
 
 ## AI-Assistance Disclosure
 
-This project was built with AI coding assistance (Google Antigravity / Claude).
+This project was built with AI coding assistance (Google Antigravity / Freebuff).
 
 ## Post-deadline commits
 
