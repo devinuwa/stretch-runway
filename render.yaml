@@ -1,0 +1,33 @@
+# Render Blueprint for the Stretch hosted-preview backend.
+#
+# Deploy: Render dashboard -> New -> Blueprint -> pick devinuwa/stretch-runway
+# -> Apply. See docs/DEPLOY.md for the full walkthrough.
+#
+# Plan: "starter" keeps the service warm. A "free" instance also works — the
+# only cost is a ~1 minute cold start after idle.
+services:
+  - type: web
+    name: stretch-runway-api
+    runtime: python
+    plan: starter # or "free"
+    # rootDir is intentionally left blank (repo root); the build/start commands
+    # reference backend/ explicitly.
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: STRETCH_HOSTED
+        value: "1"
+      - key: STRETCH_PROFILE
+        value: demo
+      - key: STRETCH_PERSIST
+        value: "0"
+      - key: STRETCH_LLM
+        value: "off"
+      # Pin a Python version Render supports (3.12.x). The code targets 3.11+.
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      # Set in the Render dashboard after Vercel assigns the frontend URL
+      # (comma-separated, no trailing slash). sync:false keeps it out of git.
+      - key: STRETCH_CORS_ORIGINS
+        sync: false
